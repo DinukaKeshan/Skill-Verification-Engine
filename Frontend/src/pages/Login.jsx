@@ -3,12 +3,14 @@ import { loginUser } from "../services/authService";
 import { saveAuth } from "../utils/auth";
 import { useNavigate } from "react-router-dom";
 import GoogleButton from "../components/GoogleButton";
+import { useAuth } from "../context/AuthContext";
 
 export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const navigate = useNavigate();
+  const { login } = useAuth();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -17,6 +19,7 @@ export default function Login() {
     try {
       const res = await loginUser({ email, password });
       saveAuth(res.data.token, res.data.user);
+      login(res.data.user); // Update context
       navigate("/");
     } catch (err) {
       setError(err.response?.data?.message || "Login failed");

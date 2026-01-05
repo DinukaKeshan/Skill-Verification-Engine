@@ -1,13 +1,14 @@
 import { Link, useNavigate } from "react-router-dom";
-import { isAuthenticated, logout, getUser } from "../utils/auth";
+import { logout } from "../utils/auth";
+import { useAuth } from "../context/AuthContext";
 
 export default function Navbar() {
   const navigate = useNavigate();
-  const loggedIn = isAuthenticated();
-  const user = getUser();
+  const { authenticated, user, logoutUser } = useAuth();
 
   const handleLogout = () => {
     logout();
+    logoutUser();
     navigate("/");
   };
 
@@ -18,7 +19,7 @@ export default function Navbar() {
       </Link>
 
       <div className="space-x-4 flex items-center">
-        {!loggedIn ? (
+        {!authenticated ? (
           <>
             <Link to="/login" className="hover:text-gray-300">
               Login

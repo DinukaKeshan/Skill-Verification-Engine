@@ -3,13 +3,16 @@ import { registerUser } from "../services/authService";
 import { saveAuth } from "../utils/auth";
 import { useNavigate } from "react-router-dom";
 import GoogleButton from "../components/GoogleButton";
+import { useAuth } from "../context/AuthContext";
 
 export default function Register() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+
   const navigate = useNavigate();
+  const { login } = useAuth(); // ✅ added
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -17,7 +20,10 @@ export default function Register() {
 
     try {
       const res = await registerUser({ name, email, password });
-      saveAuth(res.data.token, res.data.user);
+
+      saveAuth(res.data.token, res.data.user); // save to localStorage
+      login(res.data.user);                    // ✅ update auth context
+
       navigate("/");
     } catch (err) {
       setError(err.response?.data?.message || "Registration failed");
