@@ -6,6 +6,7 @@ import Navbar from "./components/Navbar";
 import GoogleRedirect from "./pages/GoogleRedirect";
 import { AuthProvider } from "./context/AuthContext";
 import VerifySkill from "./pages/VerifySkill";
+import QuizPage from "./pages/QuizPage";
 
 export default function App() {
   return (
@@ -18,6 +19,8 @@ export default function App() {
           <Route path="/register" element={<Register />} />
           <Route path="/oauth-success" element={<GoogleRedirect />} />
           <Route path="/verify-skill" element={<VerifySkill />} />
+          <Route path="/verify-skill" element={<VerifySkill />} />
+          <Route path="/quiz/:skill" element={<QuizPage />} />
         </Routes>
       </BrowserRouter>
     </AuthProvider>
