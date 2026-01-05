@@ -1,3 +1,4 @@
+// services/quizService.js
 import axios from "axios";
 import { getToken } from "../utils/auth";
 
@@ -19,5 +20,6 @@ export const startQuiz = (skill) =>
 export const nextQuestion = (quizId, answer) =>
   API.post("/quiz/next", { quizId, answer });
 
-export const submitQuiz = (quizId) =>
-  API.post("/quiz/submit", { quizId });
+// ✅ Updated to accept lastAnswer parameter
+export const submitQuiz = (quizId, lastAnswer) =>
+  API.post("/quiz/submit", { quizId, lastAnswer });

@@ -1,3 +1,4 @@
+// pages/VerifySkill.jsx
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { isAuthenticated } from "../utils/auth";
@@ -6,6 +7,7 @@ import { addSkill, getSkills } from "../services/skillService";
 export default function VerifySkill() {
   const [skill, setSkill] = useState("");
   const [skills, setSkills] = useState([]);
+  const [verifiedSkills, setVerifiedSkills] = useState([]);
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
@@ -21,7 +23,8 @@ export default function VerifySkill() {
     const fetchSkills = async () => {
       try {
         const res = await getSkills();
-        setSkills(res.data);
+        setSkills(res.data.skills || []);
+        setVerifiedSkills(res.data.verifiedSkills || []);
       } catch (err) {
         console.error("Failed to load skills");
       }
@@ -47,8 +50,36 @@ export default function VerifySkill() {
   };
 
   const startVerification = (skillName) => {
-    // NEXT STEP: quiz generation API
     navigate(`/quiz/${skillName}`);
+  };
+
+  // Check if skill is verified
+  const getVerificationStatus = (skillName) => {
+    return verifiedSkills.find(
+      vs => vs.skill.toLowerCase() === skillName.toLowerCase()
+    );
+  };
+
+  // Get badge color
+  const getBadgeColor = (badge) => {
+    switch (badge) {
+      case "Platinum": return "bg-gradient-to-r from-gray-400 to-gray-200 text-gray-900";
+      case "Gold": return "bg-gradient-to-r from-yellow-400 to-yellow-200 text-yellow-900";
+      case "Silver": return "bg-gradient-to-r from-gray-300 to-gray-100 text-gray-800";
+      case "Bronze": return "bg-gradient-to-r from-orange-400 to-orange-200 text-orange-900";
+      default: return "bg-gray-200 text-gray-700";
+    }
+  };
+
+  // Get badge emoji
+  const getBadgeEmoji = (badge) => {
+    switch (badge) {
+      case "Platinum": return "💎";
+      case "Gold": return "🥇";
+      case "Silver": return "🥈";
+      case "Bronze": return "🥉";
+      default: return "🏅";
+    }
   };
 
   return (
@@ -69,6 +100,7 @@ export default function VerifySkill() {
           className="flex-1 border rounded px-4 py-2"
           value={skill}
           onChange={(e) => setSkill(e.target.value)}
+          onKeyPress={(e) => e.key === "Enter" && handleAddSkill()}
         />
 
         <button
@@ -88,29 +120,85 @@ export default function VerifySkill() {
           </h2>
 
           <ul className="space-y-3">
-            {skills.map((s, i) => (
-              <li
-                key={i}
-                className="flex justify-between items-center bg-white p-4 rounded shadow-sm"
-              >
-                <span className="font-medium">
-                  {s}
-                </span>
+            {skills.map((s, i) => {
+              const verification = getVerificationStatus(s);
+              const isVerified = !!verification;
 
-                <button
-                  onClick={() => startVerification(s)}
-                  className="bg-green-500 hover:bg-green-600 text-white px-4 py-1 rounded"
+              return (
+                <li
+                  key={i}
+                  className="flex justify-between items-center bg-white p-4 rounded shadow-sm"
                 >
-                  Verify
-                </button>
-              </li>
-            ))}
+                  <div className="flex items-center gap-3">
+                    <span className="font-medium text-lg">
+                      {s}
+                    </span>
+                    
+                    {/* ✅ VERIFICATION BADGE */}
+                    {isVerified && (
+                      <div className={`flex items-center gap-2 px-3 py-1 rounded-full text-sm font-bold shadow-md ${getBadgeColor(verification.badge)}`}>
+                        <span>{getBadgeEmoji(verification.badge)}</span>
+                        <span>{verification.badge}</span>
+                        <span className="text-xs opacity-75">
+                          {verification.percentage}%
+                        </span>
+                      </div>
+                    )}
+                  </div>
+
+                  <button
+                    onClick={() => startVerification(s)}
+                    className={`px-4 py-1 rounded font-medium transition ${
+                      isVerified
+                        ? "bg-blue-500 hover:bg-blue-600 text-white"
+                        : "bg-green-500 hover:bg-green-600 text-white"
+                    }`}
+                  >
+                    {isVerified ? "Re-verify" : "Verify"}
+                  </button>
+                </li>
+              );
+            })}
           </ul>
         </div>
       ) : (
         <p className="text-gray-500">
           No skills added yet.
         </p>
+      )}
+
+      {/* VERIFIED SKILLS SECTION */}
+      {verifiedSkills.length > 0 && (
+        <div className="mt-8 bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg p-6">
+          <h2 className="text-xl font-semibold mb-4 text-green-800">
+            🎓 Verified Skills ({verifiedSkills.length})
+          </h2>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {verifiedSkills.map((vs, i) => (
+              <div
+                key={i}
+                className="bg-white rounded-lg p-4 shadow-md border-2 border-green-200"
+              >
+                <div className="flex justify-between items-start mb-2">
+                  <h3 className="font-bold text-lg text-gray-800">
+                    {vs.skill}
+                  </h3>
+                  <div className={`px-3 py-1 rounded-full text-sm font-bold ${getBadgeColor(vs.badge)}`}>
+                    {getBadgeEmoji(vs.badge)} {vs.badge}
+                  </div>
+                </div>
+                
+                <div className="text-sm text-gray-600 space-y-1">
+                  <p>Score: <strong>{vs.score}/{vs.total}</strong> ({vs.percentage}%)</p>
+                  <p className="text-xs">
+                    Verified: {new Date(vs.verifiedAt).toLocaleDateString()}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
       )}
     </div>
   );

@@ -1,3 +1,4 @@
+// models/quiz.model.js
 import mongoose from "mongoose";
 
 const quizSchema = new mongoose.Schema(
@@ -15,7 +16,7 @@ const quizSchema = new mongoose.Schema(
       {
         question: String,
         options: [String],
-        correctAnswer: Number,
+        correctIndex: Number, // ✅ Changed from correctAnswer to correctIndex
         userAnswer: Number
       }
     ],
