@@ -4,12 +4,15 @@ import passport from "passport";
 import "./config/passport.js"; // ✅ loads strategy
 import authRoutes from "./routes/auth.routes.js";
 import skillRoutes from "./routes/skill.routes.js";
+import quizRoutes from "./routes/quiz.routes.js";
 
 const app = express();
 
 app.use(cors());
 app.use(express.json());
 app.use(passport.initialize());
+
+app.use("/api/quiz", quizRoutes);
 
 app.use("/api/skills", skillRoutes);
 

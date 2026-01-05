@@ -1,53 +1,39 @@
 import { useParams, useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
-import { isAuthenticated } from "../utils/auth";
+import { startQuiz } from "../services/quizService";
 import Quiz from "../components/Quiz";
+import { isAuthenticated } from "../utils/auth";
 
 export default function QuizPage() {
   const { skill } = useParams();
   const navigate = useNavigate();
-  const [questions, setQuestions] = useState([]);
+
+  const [quizId, setQuizId] = useState(null);
+  const [question, setQuestion] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // Guard route
   useEffect(() => {
     if (!isAuthenticated()) {
       navigate("/login");
+      return;
     }
-  }, []);
 
-  useEffect(() => {
-    // TEMP: mock quiz (backend comes next)
-    setTimeout(() => {
-      setQuestions([
-        {
-          id: 1,
-          question: `What is ${skill}?`,
-          options: [
-            "A programming language",
-            "A database",
-            "A browser",
-            "An OS"
-          ],
-          correctAnswer: 0
-        },
-        {
-          id: 2,
-          question: `Which company created ${skill}?`,
-          options: ["Google", "Microsoft", "Meta", "Depends"],
-          correctAnswer: 3
-        }
-      ]);
-      setLoading(false);
-    }, 800);
+    const initQuiz = async () => {
+      try {
+        const res = await startQuiz(skill);
+        setQuizId(res.data.quizId);
+        setQuestion(res.data.question);
+        setLoading(false);
+      } catch (err) {
+        console.error(err);
+      }
+    };
+
+    initQuiz();
   }, [skill]);
 
   if (loading) {
-    return (
-      <div className="text-center py-20 text-lg">
-        Loading quiz...
-      </div>
-    );
+    return <div className="text-center py-20">Loading quiz...</div>;
   }
 
   return (
@@ -56,7 +42,11 @@ export default function QuizPage() {
         {skill.toUpperCase()} Skill Quiz
       </h1>
 
-      <Quiz questions={questions} skill={skill} />
+      <Quiz
+        quizId={quizId}
+        question={question}
+        setQuestion={setQuestion}
+      />
     </div>
   );
 }
