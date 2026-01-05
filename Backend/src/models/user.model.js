@@ -23,6 +23,12 @@ const userSchema = new mongoose.Schema(
       default: "local"
     },
 
+    skills: [
+      {
+        type: String
+      }
+    ],
+
     verifiedSkills: [
       {
         skill: String,
