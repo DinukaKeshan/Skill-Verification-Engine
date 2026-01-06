@@ -1,9 +1,11 @@
-// controllers/quiz.controller.js
 import Quiz from "../models/quiz.model.js";
-import { generateQuestion } from "../services/ollama.service.js";
+import { generateRagQuestion } from "../services/rag/rag.service.js";
 
 const MAX_QUESTIONS = 5;
 
+/**
+ * START QUIZ
+ */
 export const startQuiz = async (req, res) => {
   const { skill } = req.body;
 
@@ -12,22 +14,26 @@ export const startQuiz = async (req, res) => {
       user: req.user._id,
       skill,
       questions: [],
+      completed: false
     });
 
-    const question = await generateQuestion(skill);
-    quiz.questions.push(question);
+    const firstQuestion = await generateRagQuestion(skill);
+    quiz.questions.push(firstQuestion);
     await quiz.save();
 
     res.json({
       quizId: quiz._id,
-      question,
+      question: firstQuestion
     });
   } catch (error) {
-    console.error(error);
+    console.error("startQuiz error:", error);
     res.status(500).json({ message: "Server error" });
   }
 };
 
+/**
+ * NEXT QUESTION
+ */
 export const nextQuestion = async (req, res) => {
   const { quizId, answer } = req.body;
 
@@ -37,32 +43,40 @@ export const nextQuestion = async (req, res) => {
       return res.status(404).json({ message: "Quiz not found" });
     }
 
-    // Save the user's answer to the last (current) question
-    if (quiz.questions.length > 0) {
-      const lastIndex = quiz.questions.length - 1;
-      quiz.questions[lastIndex].userAnswer = answer;
+    if (quiz.completed) {
+      return res.status(400).json({ message: "Quiz already completed" });
     }
 
-    // If we've reached 5 questions, signal completion
+    // ✅ Save answer for current question
+    const currentIndex = quiz.questions.length - 1;
+    if (currentIndex >= 0) {
+      quiz.questions[currentIndex].userAnswer = answer;
+    }
+
+    // ✅ If quiz is complete after saving answer
     if (quiz.questions.length >= MAX_QUESTIONS) {
-      await quiz.save(); // ✅ Save the last answer before completing
+      quiz.completed = true;
+      await quiz.save();
       return res.json({ isComplete: true });
     }
 
-    // Generate and add the next question
-    const newQuestion = await generateQuestion(quiz.skill);
-    quiz.questions.push(newQuestion);
+    // ✅ Generate next question
+    const nextQ = await generateRagQuestion(quiz.skill);
+    quiz.questions.push(nextQ);
     await quiz.save();
 
-    res.json({ question: newQuestion });
+    res.json({ question: nextQ });
   } catch (error) {
     console.error("nextQuestion error:", error);
     res.status(500).json({ message: "Server error" });
   }
 };
 
+/**
+ * SUBMIT QUIZ
+ */
 export const submitQuiz = async (req, res) => {
-  const { quizId, lastAnswer } = req.body; // ✅ Accept lastAnswer
+  const { quizId } = req.body;
 
   try {
     const quiz = await Quiz.findById(quizId);
@@ -70,19 +84,21 @@ export const submitQuiz = async (req, res) => {
       return res.status(404).json({ message: "Quiz not found" });
     }
 
-    // ✅ Save the last answer if provided
-    if (lastAnswer !== undefined && quiz.questions.length > 0) {
-      const lastIndex = quiz.questions.length - 1;
-      quiz.questions[lastIndex].userAnswer = lastAnswer;
+    if (quiz.completed && quiz.score !== undefined) {
+      return res.json({
+        score: quiz.score,
+        total: quiz.questions.length
+      });
     }
 
-    // ✅ Calculate score using correctIndex (matching what Ollama returns)
+    // ✅ Score calculation
     let score = 0;
-    quiz.questions.forEach((q) => {
-      console.log('Question:', q.question);
-      console.log('User Answer:', q.userAnswer, 'Correct Index:', q.correctIndex);
-      
-      if (q.userAnswer !== undefined && q.userAnswer === q.correctIndex) {
+    quiz.questions.forEach((q, index) => {
+      if (
+        q.userAnswer !== undefined &&
+        q.correctIndex !== undefined &&
+        q.userAnswer === q.correctIndex
+      ) {
         score++;
       }
     });
@@ -93,7 +109,7 @@ export const submitQuiz = async (req, res) => {
 
     res.json({
       score,
-      total: quiz.questions.length,
+      total: quiz.questions.length
     });
   } catch (error) {
     console.error("submitQuiz error:", error);
