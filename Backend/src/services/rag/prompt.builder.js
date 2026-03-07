@@ -1,4 +1,5 @@
 export function buildQuestionPrompt(skill, context) {
+  const timestamp = Date.now(); // Unique identifier for each question request
   return `
 You are a strict technical examiner.
 
@@ -10,6 +11,7 @@ ${context}
 
 TASK:
 Generate ONE multiple-choice question for ${skill}.
+Unique ID: ${timestamp}
 
 RULES:
 - Exactly 4 options
