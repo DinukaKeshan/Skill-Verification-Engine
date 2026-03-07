@@ -14,17 +14,22 @@ export const startQuiz = async (req, res) => {
       user: req.user._id,
       skill,
       questions: [],
-      completed: false // The quiz should not be completed at the start
+      completed: false, // The quiz should not be completed at the start
     });
 
     // Generate the first question asynchronously
     const firstQuestion = await generateRagQuestion(skill);
-    quiz.questions.push(firstQuestion);
+    quiz.questions.push({
+      question: firstQuestion.question,
+      options: firstQuestion.options,
+      correctIndex: firstQuestion.correctIndex,
+      userAnswer: null, // Initially no user answer
+    });
     await quiz.save();
 
     res.json({
       quizId: quiz._id,
-      question: firstQuestion
+      question: firstQuestion,
     });
   } catch (error) {
     console.error("startQuiz error:", error);
@@ -63,7 +68,12 @@ export const nextQuestion = async (req, res) => {
 
     // Generate next question
     const nextQ = await generateRagQuestion(quiz.skill);
-    quiz.questions.push(nextQ);
+    quiz.questions.push({
+      question: nextQ.question,
+      options: nextQ.options,
+      correctIndex: nextQ.correctIndex,
+      userAnswer: null, // No answer yet
+    });
     await quiz.save();
 
     res.json({ question: nextQ });
@@ -94,7 +104,7 @@ export const submitQuiz = async (req, res) => {
     // Calculate score only after the quiz is completed
     let score = 0;
     quiz.questions.forEach((q) => {
-      if (q.userAnswer !== undefined && q.correctIndex !== undefined && q.userAnswer === q.correctIndex) {
+      if (q.userAnswer !== null && q.correctIndex !== undefined && q.userAnswer === q.correctIndex) {
         score++;
       }
     });
@@ -102,9 +112,18 @@ export const submitQuiz = async (req, res) => {
     quiz.score = score;
     await quiz.save();
 
+    // Generate the report (question + user answer + correct answer)
+    const report = quiz.questions.map((q) => ({
+      question: q.question,
+      options: q.options,
+      userAnswer: q.userAnswer !== null ? q.options[q.userAnswer] : 'No answer',  // Display user answer
+      correctAnswer: q.options[q.correctIndex],  // Display correct answer
+    }));
+
     res.json({
       score,
-      total: quiz.questions.length
+      total: quiz.questions.length,
+      report,  // Include the report with all questions and answers
     });
 
   } catch (error) {

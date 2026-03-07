@@ -1,4 +1,3 @@
-// pages/QuizSummary.jsx
 import { useLocation, useNavigate } from "react-router-dom";
 import { useState } from "react";
 import { claimBadge } from "../services/skillService";
@@ -14,7 +13,7 @@ export default function QuizSummary() {
   }
 
   const { result, skill } = state;
-  const { score, total } = result;
+  const { score, total, report } = result; // Now including the report (questions faced)
   const percentage = Math.round((score / total) * 100);
   const badgeEarned = percentage >= 80;
 
@@ -115,6 +114,24 @@ export default function QuizSummary() {
                 >
                   ← Back to Skills
                 </button>
+              </div>
+            </div>
+
+            {/* Display Report */}
+            <div className="mt-12">
+              <h3 className="text-3xl font-semibold mb-6">Questions Faced:</h3>
+              <div className="space-y-4">
+                {report.map((q, index) => (
+                  <div key={index} className="p-4 bg-gray-100 rounded-lg shadow-md">
+                    <p className="font-semibold text-lg">{q.question}</p>
+                    <div className="text-sm text-gray-600 mb-2">
+                      <strong>Your Answer:</strong> {q.userAnswer}
+                    </div>
+                    <div className="text-sm text-gray-600">
+                      <strong>Correct Answer:</strong> {q.correctAnswer}
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
           </div>

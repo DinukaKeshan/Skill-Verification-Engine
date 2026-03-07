@@ -1,4 +1,3 @@
-// models/quiz.model.js
 import mongoose from "mongoose";
 
 const quizSchema = new mongoose.Schema(
@@ -16,11 +15,15 @@ const quizSchema = new mongoose.Schema(
       {
         question: String,
         options: [String],
-        correctIndex: Number, // ✅ Changed from correctAnswer to correctIndex
-        userAnswer: Number
+        correctIndex: Number, // ✅ Correct answer index
+        userAnswer: {
+          type: Number,
+          min: [0, 'User answer must be between 0 and 3'],
+          max: [3, 'User answer must be between 0 and 3']
+        }
       }
     ],
-    score: Number,
+    score: { type: Number, default: 0 }, // Default score to 0
     completed: {
       type: Boolean,
       default: false
