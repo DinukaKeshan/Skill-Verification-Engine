@@ -5,16 +5,44 @@ const MAX_QUESTIONS = 5;
 
 /**
  * START QUIZ
+ * Fixed: Added check to prevent duplicate quiz creation
  */
 export const startQuiz = async (req, res) => {
   const { skill } = req.body;
 
   try {
+    // ✅ FIX: Check if user already has an incomplete quiz for this skill
+    const existingQuiz = await Quiz.findOne({
+      user: req.user._id,
+      skill,
+      completed: false,
+    }).sort({ createdAt: -1 }); // Get the most recent one
+
+    // If an incomplete quiz exists and was created in the last 5 minutes, return it
+    if (existingQuiz) {
+      const timeDiff = Date.now() - existingQuiz.createdAt.getTime();
+      const fiveMinutes = 5 * 60 * 1000;
+
+      if (timeDiff < fiveMinutes && existingQuiz.questions.length > 0) {
+        // Return the existing quiz
+        const lastQuestion = existingQuiz.questions[existingQuiz.questions.length - 1];
+        return res.json({
+          quizId: existingQuiz._id,
+          question: {
+            question: lastQuestion.question,
+            options: lastQuestion.options,
+            correctIndex: lastQuestion.correctIndex,
+          },
+        });
+      }
+    }
+
+    // Create new quiz
     const quiz = await Quiz.create({
       user: req.user._id,
       skill,
       questions: [],
-      completed: false, // The quiz should not be completed at the start
+      completed: false,
     });
 
     // Generate the first question asynchronously
@@ -23,7 +51,7 @@ export const startQuiz = async (req, res) => {
       question: firstQuestion.question,
       options: firstQuestion.options,
       correctIndex: firstQuestion.correctIndex,
-      userAnswer: null, // Initially no user answer
+      userAnswer: null,
     });
     await quiz.save();
 
@@ -72,7 +100,7 @@ export const nextQuestion = async (req, res) => {
       question: nextQ.question,
       options: nextQ.options,
       correctIndex: nextQ.correctIndex,
-      userAnswer: null, // No answer yet
+      userAnswer: null,
     });
     await quiz.save();
 
@@ -116,14 +144,14 @@ export const submitQuiz = async (req, res) => {
     const report = quiz.questions.map((q) => ({
       question: q.question,
       options: q.options,
-      userAnswer: q.userAnswer !== null ? q.options[q.userAnswer] : 'No answer',  // Display user answer
-      correctAnswer: q.options[q.correctIndex],  // Display correct answer
+      userAnswer: q.userAnswer !== null ? q.options[q.userAnswer] : 'No answer',
+      correctAnswer: q.options[q.correctIndex],
     }));
 
     res.json({
       score,
       total: quiz.questions.length,
-      report,  // Include the report with all questions and answers
+      report,
     });
 
   } catch (error) {

@@ -5,17 +5,16 @@ const OLLAMA_URL = "http://localhost:11434/api/generate";
  */
 function repairJson(raw) {
   return raw
-    // smart quotes
+    // Replace smart quotes with regular quotes
     .replace(/[“”]/g, '"')
-    // single-quoted keys
+    // Replace single-quoted keys with double quotes
     .replace(/'([^']+)'(?=\s*:)/g, '"$1"')
-    // single-quoted values
+    // Replace single-quoted values with double quotes
     .replace(/:\s*'([^']*)'/g, ': "$1"')
-    // single-quoted array values
     .replace(/'([^']*)'/g, '"$1"')
-    // trailing commas
-    .replace(/,\s*}/g, "}")
-    .replace(/,\s*]/g, "]");
+    // Remove trailing commas
+    .replace(/,\s*}/g, '}')
+    .replace(/,\s*]/g, ']');
 }
 
 /**
@@ -28,7 +27,7 @@ export async function generateFromOllama(prompt) {
     body: JSON.stringify({
       model: "llama3",
       prompt,
-      stream: false
+      stream: false,
     })
   });
 
@@ -41,13 +40,14 @@ export async function generateFromOllama(prompt) {
 
   console.log("🦙 RAW OLLAMA OUTPUT:\n", rawText);
 
-  // Extract JSON safely
-  const jsonMatch = rawText.match(/\{[\s\S]*\}/);
+  // Extract JSON object from the raw response
+  const jsonMatch = rawText.match(/\{[\s\S]*\}/); // Match JSON inside curly braces
   if (!jsonMatch) {
     throw new Error("No JSON object found in Ollama output");
   }
 
   try {
+    // Clean up the raw JSON and parse it
     const repaired = repairJson(jsonMatch[0]);
     return JSON.parse(repaired);
   } catch (err) {

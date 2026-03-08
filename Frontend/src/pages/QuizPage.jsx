@@ -1,6 +1,6 @@
 // pages/QuizPage.jsx
 import { useParams, useNavigate } from "react-router-dom";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { startQuiz } from "../services/quizService";
 import Quiz from "../components/Quiz";
 import { isAuthenticated } from "../utils/auth";
@@ -17,11 +17,20 @@ export default function QuizPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
+  // ✅ FIX: Use ref to prevent double initialization in React Strict Mode
+  const initializedRef = useRef(false);
+
   useEffect(() => {
     if (!isAuthenticated()) {
       navigate("/login", { state: { from: `/quiz/${skill}` } });
       return;
     }
+
+    // ✅ FIX: Prevent double execution in Strict Mode
+    if (initializedRef.current) {
+      return;
+    }
+    initializedRef.current = true;
 
     const initQuiz = async () => {
       try {
