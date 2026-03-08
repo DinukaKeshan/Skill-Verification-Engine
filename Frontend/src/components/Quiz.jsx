@@ -1,4 +1,3 @@
-// components/Quiz.jsx
 import { useState } from "react";
 import { nextQuestion, submitQuiz } from "../services/quizService";
 import { useNavigate } from "react-router-dom";
@@ -14,6 +13,8 @@ export default function Quiz({
 }) {
   const [selected, setSelected] = useState(null);
   const [revealed, setRevealed] = useState(false);
+  const [isNextLoading, setIsNextLoading] = useState(false); // Loading state for next button
+  const [isNextButtonDisabled, setIsNextButtonDisabled] = useState(false); // Disable the button while loading
   const navigate = useNavigate();
 
   const handleSelect = (index) => {
@@ -24,6 +25,9 @@ export default function Quiz({
 
   const handleNext = async () => {
     if (selected === null) return;
+
+    setIsNextButtonDisabled(true); // Disable the button while loading
+    setIsNextLoading(true); // Show loading animation
 
     try {
       const res = await nextQuestion(quizId, selected);
@@ -43,6 +47,9 @@ export default function Quiz({
       setRevealed(false);
     } catch (err) {
       console.error("Error getting next question:", err);
+    } finally {
+      setIsNextButtonDisabled(false); // Re-enable the button
+      setIsNextLoading(false); // Hide the loading animation
     }
   };
 
@@ -96,24 +103,31 @@ export default function Quiz({
       <div className="flex justify-between items-center">
         <button
           onClick={handleNext}
-          disabled={!revealed}
-          className={`px-10 py-4 rounded-xl font-bold text-white transition ${
-            revealed
-              ? "bg-indigo-600 hover:bg-indigo-700 shadow-lg"
-              : "bg-gray-400 cursor-not-allowed"
+          disabled={isNextButtonDisabled}
+          className={`px-10 py-4 rounded-xl font-bold text-white transition flex items-center justify-center ${
+            isNextButtonDisabled
+              ? "bg-gray-400 cursor-not-allowed"
+              : "bg-indigo-600 hover:bg-indigo-700 shadow-lg"
           }`}
         >
-          {isLastQuestion ? "Finish Quiz" : "Next Question"}
+          {isNextLoading ? (
+            <>
+              <div className="spinner"></div> {/* Loading spinner */}
+              <span className="ml-2">Loading...</span>
+            </>
+          ) : (
+            isLastQuestion ? "Finish Quiz" : "Next Question"
+          )}
         </button>
 
         {isLastQuestion && (
           <button
             onClick={handleSubmit}
-            disabled={!revealed}
+            disabled={isNextButtonDisabled}
             className={`px-10 py-4 rounded-xl font-bold text-white transition ${
-              revealed
-                ? "bg-green-600 hover:bg-green-700 shadow-lg"
-                : "bg-gray-400 cursor-not-allowed"
+              isNextButtonDisabled
+                ? "bg-gray-400 cursor-not-allowed"
+                : "bg-green-600 hover:bg-green-700 shadow-lg"
             }`}
           >
             Submit Quiz
