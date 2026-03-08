@@ -1,26 +1,22 @@
-const TOKEN_KEY = "token";
-const USER_KEY = "user";
-
-export const saveAuth = (token, user) => {
-  localStorage.setItem(TOKEN_KEY, token);
-  localStorage.setItem(USER_KEY, JSON.stringify(user));
-};
-
-export const logout = () => {
-  localStorage.removeItem(TOKEN_KEY);
-  localStorage.removeItem(USER_KEY);
-};
-
-export const isAuthenticated = () => {
-  return !!localStorage.getItem(TOKEN_KEY);
+export const getToken = () => {
+  return localStorage.getItem("token");
 };
 
 export const getUser = () => {
-  const user = localStorage.getItem(USER_KEY);
+  const user = localStorage.getItem("user");
   return user ? JSON.parse(user) : null;
 };
 
-/* ✅ ADD THIS */
-export const getToken = () => {
-  return localStorage.getItem(TOKEN_KEY);
+export const isAuthenticated = () => {
+  return !!getToken();
+};
+
+export const saveAuth = (token, user) => {
+  localStorage.setItem("token", token);
+  localStorage.setItem("user", JSON.stringify(user));
+};
+
+export const logout = () => {
+  localStorage.removeItem("token");
+  localStorage.removeItem("user");
 };
