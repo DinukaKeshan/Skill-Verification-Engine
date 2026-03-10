@@ -7,7 +7,10 @@ const SKILL_MAP = {
   "reactjs": "react",
 
   "node": "node",
-  "nodejs": "node"
+  "nodejs": "node",
+
+  "java": "java",
+  "javacode": "java"
 };
 
 export function mapSkillToFolder(skill) {
