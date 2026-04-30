@@ -1,4 +1,4 @@
-const OLLAMA_URL = "http://localhost:11434/api/generate";
+const OLLAMA_URL = process.env.OLLAMA_URL || "http://localhost:11434/api/generate";
 
 /**
  * Repairs malformed JSON from LLM output
@@ -6,7 +6,7 @@ const OLLAMA_URL = "http://localhost:11434/api/generate";
 function repairJson(raw) {
   return raw
     // Replace smart quotes with regular quotes
-    .replace(/[“”]/g, '"')
+    .replace(/[""]/g, '"')
     // Replace single-quoted keys with double quotes
     .replace(/'([^']+)'(?=\s*:)/g, '"$1"')
     // Replace single-quoted values with double quotes
@@ -18,14 +18,15 @@ function repairJson(raw) {
 }
 
 /**
- * Generates JSON output from Ollama using a supplied prompt
+ * Generates JSON output (object or array) from Ollama using a supplied prompt.
+ * Handles both top-level JSON objects {...} and arrays [...].
  */
 export async function generateFromOllama(prompt) {
   const response = await fetch(OLLAMA_URL, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      model: "llama3",
+      model: process.env.OLLAMA_MODEL || "llama3",
       prompt,
       stream: false,
     })
@@ -40,21 +41,33 @@ export async function generateFromOllama(prompt) {
 
   console.log("🦙 RAW OLLAMA OUTPUT:\n", rawText);
 
-  // Extract JSON object from the raw response
-  const jsonMatch = rawText.match(/\{[\s\S]*\}/); // Match JSON inside curly braces
-  if (!jsonMatch) {
-    throw new Error("No JSON object found in Ollama output");
+  // First try to extract a JSON array [...]
+  const arrayMatch = rawText.match(/\[[\s\S]*\]/);
+  if (arrayMatch) {
+    try {
+      const repaired = repairJson(arrayMatch[0]);
+      return JSON.parse(repaired);
+    } catch (_) {
+      // fall through to object extraction
+    }
   }
 
-  try {
-    // Clean up the raw JSON and parse it
-    const repaired = repairJson(jsonMatch[0]);
-    return JSON.parse(repaired);
-  } catch (err) {
-    console.error("❌ JSON PARSE FAILED");
-    console.error("RAW:", rawText);
-    throw new Error("Invalid JSON from Ollama");
+  // Fall back to JSON object {...}
+  const objectMatch = rawText.match(/\{[\s\S]*\}/);
+  if (objectMatch) {
+    try {
+      const repaired = repairJson(objectMatch[0]);
+      return JSON.parse(repaired);
+    } catch (err) {
+      console.error("❌ JSON PARSE FAILED");
+      console.error("RAW:", rawText);
+      throw new Error("Invalid JSON from Ollama");
+    }
   }
+
+  console.error("❌ No JSON found in Ollama output");
+  console.error("RAW:", rawText);
+  throw new Error("No JSON found in Ollama output");
 }
 
 /**
@@ -80,4 +93,4 @@ JSON FORMAT:
 `;
 
   return generateFromOllama(prompt);
-}
+}

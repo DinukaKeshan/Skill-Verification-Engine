@@ -3,7 +3,7 @@ import axios from "axios";
 import { getToken } from "../utils/auth";
 
 const API = axios.create({
-  baseURL: "http://localhost:5000/api"
+  baseURL: import.meta.env.VITE_API_URL || "http://localhost:5000/api"
 });
 
 API.interceptors.request.use((req) => {
@@ -21,6 +21,18 @@ export const addSkill = (skill) =>
 export const getSkills = () =>
   API.get("/skills");
 
-// ✅ NEW: Claim verification badge
+// Claim verification badge
 export const claimBadge = (skill, score, total, percentage) =>
   API.post("/skills/claim-badge", { skill, score, total, percentage });
+
+// New: get rich skill profiles for student dashboard
+export const getStudentSkills = (userId) =>
+  API.get(`/skills/student/${userId}/skills`);
+
+// New: get saved roadmap for a student + skill
+export const getRoadmap = (userId, skill) =>
+  API.get(`/roadmap/${userId}/${skill}`);
+
+// New: get past quiz attempts for progress tracking
+export const getQuizHistory = (userId, skill) =>
+  API.get(`/quiz/history/${userId}/${skill}`);

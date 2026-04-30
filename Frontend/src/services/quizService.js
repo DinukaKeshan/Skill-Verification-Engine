@@ -3,7 +3,7 @@ import axios from "axios";
 import { getToken } from "../utils/auth";
 
 const API = axios.create({
-  baseURL: "http://localhost:5000/api"
+  baseURL: import.meta.env.VITE_API_URL || "http://localhost:5000/api"
 });
 
 API.interceptors.request.use((req) => {
@@ -17,9 +17,10 @@ API.interceptors.request.use((req) => {
 export const startQuiz = (skill) =>
   API.post("/quiz/start", { skill });
 
-export const nextQuestion = (quizId, answer) =>
-  API.post("/quiz/next", { quizId, answer });
+// nextQuestion now takes quizId + questionIndex (no more answer submission per question)
+export const nextQuestion = (quizId, questionIndex) =>
+  API.post("/quiz/next", { quizId, questionIndex });
 
-// ✅ Updated to accept lastAnswer parameter
-export const submitQuiz = (quizId, lastAnswer) =>
-  API.post("/quiz/submit", { quizId, lastAnswer });
+// submitQuiz takes full answers array + time taken
+export const submitQuiz = (quizId, answers, timeTakenSec) =>
+  API.post("/quiz/submit", { quizId, answers, timeTakenSec });
