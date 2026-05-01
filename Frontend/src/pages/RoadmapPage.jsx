@@ -1,10 +1,7 @@
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { useEffect, useState, useContext } from "react";
-import axios from "axios";
-import { getToken } from "../utils/auth";
 import { AuthContext } from "../context/AuthContext";
-
-const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
+import { getRoadmap } from "../services/skillService";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 const LEVEL_STYLES = {
@@ -42,34 +39,96 @@ function getLevelGap(userLevel, industryLevel) {
 // ── Valid skill levels ─────────────────────────────────────────────────────────
 const VALID_LEVELS = ["Beginner", "Intermediate", "Advanced"];
 
+// ── Fallback roadmap generator (used when backend has no saved roadmap yet) ────
+function buildFallbackRoadmap(skill, level) {
+  const s = skill?.toLowerCase() || "this skill";
+  const plans = {
+    Beginner: {
+      focus_areas: [
+        `Understand the core fundamentals of ${s}`,
+        `Set up your development environment for ${s}`,
+        `Follow beginner tutorials and build 2–3 small projects`,
+        `Learn debugging techniques and common error patterns`,
+        `Join a community or forum to ask questions and share progress`,
+      ],
+      projects: [
+        `Build a simple "Hello World" ${s} app`,
+        `Create a personal portfolio page using ${s}`,
+        `Reproduce a beginner tutorial project from scratch`,
+      ],
+      resources: [
+        { title: `Official ${s} documentation`, url: `https://www.google.com/search?q=${encodeURIComponent(s + " official documentation")}`, type: "docs" },
+        { title: `${s} crash course on YouTube`, url: `https://www.youtube.com/results?search_query=${encodeURIComponent(s + " beginner tutorial")}`, type: "video" },
+        { title: `${s} beginner course on freeCodeCamp`, url: `https://www.freecodecamp.org/news/search/?query=${encodeURIComponent(s)}`, type: "course" },
+      ],
+      estimated_weeks: 4,
+    },
+    Intermediate: {
+      focus_areas: [
+        `Deep-dive into intermediate ${s} patterns and best practices`,
+        `Understand the internals — how ${s} works under the hood`,
+        `Build a full project using ${s} from planning to deployment`,
+        `Write tests and learn CI/CD basics for ${s} projects`,
+        `Read production codebases and contribute to open source`,
+      ],
+      projects: [
+        `Build a full-stack app with ${s} as the primary technology`,
+        `Implement a REST API or UI component library in ${s}`,
+        `Contribute a bug fix or feature to an open-source ${s} repo`,
+      ],
+      resources: [
+        { title: `${s} intermediate guide`, url: `https://www.google.com/search?q=${encodeURIComponent(s + " intermediate guide")}`, type: "docs" },
+        { title: `${s} advanced patterns on YouTube`, url: `https://www.youtube.com/results?search_query=${encodeURIComponent(s + " intermediate advanced")}`, type: "video" },
+        { title: `Udemy ${s} intermediate course`, url: `https://www.udemy.com/courses/search/?q=${encodeURIComponent(s)}`, type: "course" },
+      ],
+      estimated_weeks: 8,
+    },
+    Advanced: {
+      focus_areas: [
+        `Master advanced ${s} architecture and design patterns`,
+        `Optimise performance, scalability, and maintainability`,
+        `Lead or architect a production ${s} system`,
+        `Mentor others and write technical content about ${s}`,
+        `Stay current with the latest ${s} ecosystem updates`,
+      ],
+      projects: [
+        `Design and build a production-grade ${s} system`,
+        `Write a technical blog post or tutorial on an advanced ${s} topic`,
+        `Speak at a meetup or record a video course about ${s}`,
+      ],
+      resources: [
+        { title: `${s} advanced architecture articles`, url: `https://www.google.com/search?q=${encodeURIComponent(s + " advanced architecture")}`, type: "docs" },
+        { title: `${s} conference talks`, url: `https://www.youtube.com/results?search_query=${encodeURIComponent(s + " conference talk")}`, type: "video" },
+        { title: `${s} design patterns deep dive`, url: `https://www.google.com/search?q=${encodeURIComponent(s + " design patterns")}`, type: "course" },
+      ],
+      estimated_weeks: 12,
+    },
+  };
+  return plans[level] ?? plans.Beginner;
+}
+
 export default function RoadmapPage() {
-  const { skill } = useParams();
-  const navigate  = useNavigate();
-  const { user }  = useContext(AuthContext);
+  const { skill }    = useParams();
+  const navigate     = useNavigate();
+  const location     = useLocation();
+  const { user }     = useContext(AuthContext);
+
+  // Seed level from router state (passed by QuizResultPage) so we have it immediately
+  const stateLevel   = location.state?.skill_level;
 
   // Separate state variables for clarity and correct loading control
   const [isLoading,   setIsLoading]   = useState(true);
-  const [error,       setError]       = useState(null);   // null | "no_roadmap" | "fetch_error" | "no_user"
+  const [error,       setError]       = useState(null);   // null | "no_roadmap" | "fetch_error"
   const [roadmapData, setRoadmapData] = useState(null);   // { focus_areas, projects, resources, estimated_weeks }
-  const [skillLevel,  setSkillLevel]  = useState("Beginner");
+  const [skillLevel,  setSkillLevel]  = useState(stateLevel || "Beginner");
   const [skillName,   setSkillName]   = useState(skill);
 
   // ── Debug: log render state ────────────────────────────────────────────────
-  console.log("RoadmapPage render state:", { isLoading, roadmapData, skillLevel, skillName, error, userId: user?._id });
+  console.log("RoadmapPage render state:", { isLoading, roadmapData, skillLevel, skillName, error, userId: user?._id, stateLevel });
 
   useEffect(() => {
-    // If auth context hasn't hydrated yet, wait a tick then re-check
-    if (!user?._id) {
-      // Give the context up to 2 seconds to hydrate before showing error
-      const timer = setTimeout(() => {
-        if (!user?._id) {
-          console.warn("RoadmapPage: user._id still not available after timeout");
-          setError("no_user");
-          setIsLoading(false);
-        }
-      }, 2000);
-      return () => clearTimeout(timer);
-    }
+    // Wait for auth context to hydrate — do not fetch until user._id is available
+    if (!user || !user._id) return;
 
     let cancelled = false;
 
@@ -77,12 +136,9 @@ export default function RoadmapPage() {
       setIsLoading(true);
       setError(null);
       try {
-        const token = getToken();
-        console.log(`🗺️ RoadmapPage: fetching /api/roadmap/${user._id}/${skill}`);
+        console.log(`🗺️ RoadmapPage: fetching roadmap for userId=${user._id}, skill="${skill}"`);
 
-        const response = await axios.get(`${API_BASE}/roadmap/${user._id}/${skill}`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
+        const response = await getRoadmap(user._id, skill);
 
         // Full response log for debugging
         console.log("🗺️ RoadmapPage: raw response.data:", response.data);
@@ -91,8 +147,8 @@ export default function RoadmapPage() {
         if (cancelled) return;
 
         // API shape: { success: true, data: { skill_name, verified_level, roadmap: { focus_areas, projects, resources, estimated_weeks } } }
-        const profile = response.data.data;                // skill profile object
-        const roadmap = profile?.roadmap;                  // actual roadmap content
+        const profile = response.data.data;     // skill profile object
+        const roadmap = profile?.roadmap ?? null; // actual roadmap content
 
         console.log("🗺️ RoadmapPage: profile:", profile);
         console.log("🗺️ RoadmapPage: roadmap:", roadmap);
@@ -103,13 +159,22 @@ export default function RoadmapPage() {
 
         setSkillName(profile?.skill_name || skill);
         setSkillLevel(level);
-        setRoadmapData(roadmap || null);
+        // If the backend returned no roadmap object, generate a client-side one
+        // so the page is never blank even if the roadmap wasn't persisted yet
+        setRoadmapData(roadmap && roadmap.focus_areas ? roadmap : buildFallbackRoadmap(skill, level));
 
       } catch (err) {
         if (cancelled) return;
         console.error("🗺️ RoadmapPage: fetch error:", err.response?.data || err.message);
         if (err.response?.status === 404) {
-          setError("no_roadmap");
+          // No saved roadmap yet — if we have a level from quiz result state,
+          // show a placeholder roadmap rather than a dead-end empty screen
+          if (stateLevel && VALID_LEVELS.includes(stateLevel)) {
+            setSkillLevel(stateLevel);
+            setRoadmapData(buildFallbackRoadmap(skill, stateLevel));
+          } else {
+            setError("no_roadmap");
+          }
         } else {
           setError("fetch_error");
         }
@@ -120,21 +185,13 @@ export default function RoadmapPage() {
 
     fetchRoadmap();
     return () => { cancelled = true; };
-  }, [user?._id, skill]);   // depend on user._id directly, not user object
+  }, [user, skill]);   // re-runs as soon as auth context hydrates with user
+
+  // ── Still waiting for auth context to hydrate ─────────────────────────────
+  if (!user || !user._id) return <LoadingSkeleton />;
 
   // ── Loading ────────────────────────────────────────────────────────────────
   if (isLoading) return <LoadingSkeleton />;
-
-  // ── Error: no authenticated user ──────────────────────────────────────────
-  if (error === "no_user") {
-    return (
-      <EmptyState
-        message="Please log in to view your roadmap."
-        cta="Go to Login"
-        onCta={() => navigate("/login")}
-      />
-    );
-  }
 
   // ── Error: no roadmap for this skill ──────────────────────────────────────
   if (error === "no_roadmap") {

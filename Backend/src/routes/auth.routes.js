@@ -19,11 +19,12 @@ router.get(
   passport.authenticate("google", { session: false }),
   (req, res) => {
     const token = generateToken(req.user._id);
-    // ✅ Pass user data in query params
-    const userName = encodeURIComponent(req.user.name);
+    // ✅ Pass user data (including _id) in query params
+    const userId    = req.user._id.toString();
+    const userName  = encodeURIComponent(req.user.name);
     const userEmail = encodeURIComponent(req.user.email);
     res.redirect(
-      `${process.env.CLIENT_URL}/oauth-success?token=${token}&name=${userName}&email=${userEmail}`
+      `${process.env.CLIENT_URL}/oauth-success?token=${token}&id=${userId}&name=${userName}&email=${userEmail}`
     );
   }
 );

@@ -271,7 +271,71 @@ const ROADMAPS = {
       estimated_weeks: 4,
     },
   },
+
+  Java: {
+    Beginner: {
+      focus_areas: [
+        "Java syntax and data types",
+        "OOP fundamentals (classes, objects, inheritance)",
+        "Control flow and loops",
+        "Arrays and ArrayLists",
+        "Exception handling basics",
+      ],
+      projects: [
+        "Console-based calculator",
+        "Student grade tracker",
+        "Simple bank account system",
+      ],
+      resources: [
+        { title: "Java official tutorials", url: "https://docs.oracle.com/javase/tutorial/", type: "docs" },
+        { title: "MOOC.fi Java Programming", url: "https://java-programming.mooc.fi/", type: "course" },
+        { title: "Codecademy Learn Java", url: "https://www.codecademy.com/learn/learn-java", type: "course" },
+      ],
+      estimated_weeks: 5,
+    },
+    Intermediate: {
+      focus_areas: [
+        "Collections framework (HashMap, LinkedList, Stack)",
+        "Generics and interfaces",
+        "File I/O and serialization",
+        "Multithreading basics",
+        "Java Streams and lambdas",
+      ],
+      projects: [
+        "Library management system",
+        "Multi-threaded task queue",
+        "CSV file parser and reporter",
+      ],
+      resources: [
+        { title: "Baeldung Java guides", url: "https://www.baeldung.com/", type: "docs" },
+        { title: "Java Brains YouTube", url: "https://www.youtube.com/@JavaBrainsChannel", type: "video" },
+        { title: "Effective Java (summary)", url: "https://github.com/HugoMatilla/Effective-JAVA-Summary", type: "docs" },
+      ],
+      estimated_weeks: 6,
+    },
+    Advanced: {
+      focus_areas: [
+        "Spring Boot and REST APIs",
+        "JPA and Hibernate ORM",
+        "Design patterns (Factory, Singleton, Observer)",
+        "JUnit 5 testing and Mockito",
+        "Performance tuning and JVM internals",
+      ],
+      projects: [
+        "Spring Boot REST API with JWT auth",
+        "Microservice with Docker",
+        "Open source contribution to a Java library",
+      ],
+      resources: [
+        { title: "Spring Boot official docs", url: "https://spring.io/projects/spring-boot", type: "docs" },
+        { title: "Spring Framework Guru", url: "https://springframework.guru/", type: "course" },
+        { title: "JUnit 5 user guide", url: "https://junit.org/junit5/docs/current/user-guide/", type: "docs" },
+      ],
+      estimated_weeks: 8,
+    },
+  },
 };
+
 
 // ─── Generic Fallback ─────────────────────────────────────────────────────────
 
@@ -289,26 +353,37 @@ const GENERIC_ROADMAP = {
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 /**
- * Normalise a skill name to title case for ROADMAPS lookup.
- * e.g. "react" → "React", "node.js" → "Node.js", "javascript" → "JavaScript"
+ * Canonical alias map — maps any common user input to the exact ROADMAPS key.
+ * Checked before falling back to title-case.
+ */
+const SKILL_ALIASES = {
+  "react":      "React",
+  "react.js":   "React",
+  "javascript": "JavaScript",
+  "js":         "JavaScript",
+  "node":       "Node.js",
+  "nodejs":     "Node.js",
+  "node.js":    "Node.js",
+  "python":     "Python",
+  "mongodb":    "MongoDB",
+  "mongo":      "MongoDB",
+  "css":        "CSS",
+  "typescript": "TypeScript",
+  "ts":         "TypeScript",
+  "git":        "Git",
+  "java":       "Java",
+};
+
+/**
+ * Normalise a skill name for ROADMAPS lookup.
+ * Checks the alias map first; falls back to title-casing the first letter.
+ * e.g. "java" → "Java", "node" → "Node.js", "REACT" → "React"
  */
 function normaliseSkill(skill) {
-  const map = {
-    "react":      "React",
-    "javascript": "JavaScript",
-    "js":         "JavaScript",
-    "node":       "Node.js",
-    "nodejs":     "Node.js",
-    "node.js":    "Node.js",
-    "python":     "Python",
-    "mongodb":    "MongoDB",
-    "mongo":      "MongoDB",
-    "css":        "CSS",
-    "typescript": "TypeScript",
-    "ts":         "TypeScript",
-    "git":        "Git",
-  };
-  return map[skill.toLowerCase().trim()] || skill;
+  const lower = skill.toLowerCase().trim();
+  if (SKILL_ALIASES[lower]) return SKILL_ALIASES[lower];
+  // Title-case fallback: capitalise first letter, lowercase rest
+  return lower.charAt(0).toUpperCase() + lower.slice(1);
 }
 
 // ─── Exported Functions ───────────────────────────────────────────────────────
@@ -322,7 +397,9 @@ function normaliseSkill(skill) {
  * @returns {Promise<object>} Roadmap data object
  */
 export async function generateRoadmap(skill, skillLevel) {
-  const normalisedSkill = normaliseSkill(skill);
+  // Resolve alias → canonical ROADMAPS key
+  const lower = skill.toLowerCase().trim();
+  const normalisedSkill = SKILL_ALIASES[lower] ?? normaliseSkill(skill);
   const level = (skillLevel && skillLevel !== "Unknown") ? skillLevel : "Beginner";
   const roadmap = ROADMAPS[normalisedSkill]?.[level] ?? GENERIC_ROADMAP;
   console.log(`\ud83d\uddfa  generateRoadmap("${skill}" → "${normalisedSkill}", "${level}") → ${roadmap === GENERIC_ROADMAP ? 'GENERIC_ROADMAP' : 'specific roadmap'}`);

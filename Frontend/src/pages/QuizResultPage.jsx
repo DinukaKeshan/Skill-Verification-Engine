@@ -256,7 +256,9 @@ export default function QuizResultPage() {
         {/* ── 5. CTA Row ───────────────────────────────────────────── */}
         <div className="flex flex-col sm:flex-row gap-3 anim-up-d3">
           <button id="view-roadmap-btn"
-            onClick={() => navigate(`/roadmap/${skill}`)}
+            onClick={() => navigate(`/roadmap/${encodeURIComponent(skill)}`, {
+              state: { skill_level, skill, scorePercent, verified }
+            })}
             className="flex-1 font-display font-bold text-white py-3.5 rounded-xl text-sm flex items-center justify-center gap-2 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg"
             style={{ background: "linear-gradient(135deg, #6366f1, #8b5cf6)", boxShadow: "0 4px 18px rgba(99,102,241,0.3)" }}>
             📍 View Learning Roadmap
